@@ -1,0 +1,55 @@
+
+clc
+clear all
+close all
+
+%%%Thermal rating of a gearbox (helical or spur gear)
+%% Reduced energy balance (after assumptions):
+  		%Rate of heat generated due to friction = Rate of heat transfer to cooling fluid
+								%Ef = Qcw
+								%Uf*Fn*Ff = UA(T - Tc) OR {rhoc*Fc*Cpc*(Tc - Tcin)}
+%Parameters		
+Ft = 84682.53968;
+Vp = 3.250149086;
+Uf = 1.111819964;
+Fn = 91652;
+R = 8.314;
+a= 0.1;
+b=0.2;
+c=0.3;
+roughness = 0.00000051;
+B = 0.116;
+hangle = 10.5; %helical gear
+rhoref = 890;
+Fc = 200;
+fi = 0.001;
+
+To = 70; %Keep sump temperature at 70 degrees celcius
+Tref = 15;
+
+%Temperature dependent physical properties
+mio = @(T) a*exp(b*(T+c)); % viscosity of the lubricant---> Vogel Equation
+rhoc = @(T) rhoref*exp(fi*(T-Tref));
+Cpc = @(T) ((1.63+0.0034*T)/(rhoref/1000)^0.5)*1000;
+friction = @(T) 1.19*((0.048*(Ft/((B*1000)*2*Vp*(R*1000)))^0.2)*(mio(To)*1000)^(-0.05)*(roughness*10^6)^0.25*((B*1000)/Ft)^0.1055)*(cos(hangle))^(-1.3);
+friction(To)
+
+% Coolant temperature required 
+Tc = 42;
+%for i = 1:length(Tc)
+	Tf = @(Tcin)[rhoc(To)*Fc*Cpc(To)*(Tc - Tcin)+friction(To)*Uf*Fn];
+	Tcin = fsolve(Tf,25);
+%end
+Tcin
+
+%% Heat removed by cooler as a function of angular frequency and Torque of shaft
+%Energy balance is given by---> E(Shaft) = E(Generated) + E(Removed by cooler)
+%Where Shaft energy is E=Torque*omega*DeltaT (DeltaT is the change in time)
+
+x =10:60; 
+y =10:60;
+%for i = 1:length(x)
+	%for j = 1:length(y)
+[Tor omega] =meshgrid(x,y);
+Qcw = Tor*omega - Uf*Fn*friction(To); 
+mesh(Tor, omega, Qcw);
